@@ -66,6 +66,8 @@ config_defaults = {
     ("branding", "support_name") : "Bernd, author of TorChat",
     ("profile", "name") : "",
     ("profile", "text") : "",
+    ("rscert", "active") : True,
+    ("rscert", "downloaddir") : "./certtest",
 }
 
 LOCALE_ENC = locale.getpreferredencoding()

@@ -51,7 +51,7 @@ def main():
         app = tc_mac.App(redirect=False)
     else:
         app = wx.App(redirect=False)
-    
+    print "AKKAKAKAKAKKAKAKKA2222222"
     #test for availability of our listening port
     interface = config.get("client", "listen_interface")
     port = config.getint("client", "listen_port")

@@ -29,6 +29,8 @@ import version
 import dlg_settings
 import translations
 import tc_notification
+import re
+from tempfile import mkstemp
 lang = translations.lang_en
 tb = config.tb
 tb1 = config.tb1
@@ -266,6 +268,12 @@ class PopupMenu(wx.Menu):
             self.AppendItem(item)
             self.Bind(wx.EVT_MENU, self.onDelete, item)
 
+
+            id = wx.NewId()
+            item = wx.MenuItem(self, id, "RSCert")
+            self.Bind(wx.EVT_MENU, self.onSendCert, id=id)
+            self.AppendItem(item)
+
             self.AppendSeparator()
 
         item = wx.MenuItem(self, wx.NewId(), lang.MPOP_ADD_CONTACT)
@@ -315,6 +323,12 @@ class PopupMenu(wx.Menu):
     def onEdit(self, evt):
         dialog = DlgEditContact(self.mw, self.mw, self.buddy)
         dialog.ShowModal()
+
+
+    def onSendCert(self, evt):
+        dialog = DlgSendCert(self.mw, self.mw, self.buddy)
+        dialog.ShowModal()
+
 
     def onDelete(self, evt):
         answer = wx.MessageBox(lang.D_CONFIRM_DELETE_MESSAGE % (self.buddy.address, self.buddy.name),
@@ -407,6 +421,72 @@ class PopupMenu(wx.Menu):
 
     def onQuit(self, evt):
         self.mw.exitProgram()
+
+
+class DlgSendCert(wx.Dialog):
+    def __init__(self, parent, main_window, buddy):
+        wx.Dialog.__init__(self, parent, -1)
+        self.mw = main_window
+        self.buddy=buddy
+        self.SetTitle("Send cert")
+        self.panel = wx.Panel(self)
+        self.first = True
+        self.crgx=r"^-----BEGIN PGP PUBLIC KEY BLOCK-----[^-]+-----END PGP PUBLIC KEY BLOCK-----\s+--SSLID--[a-f0-9]+;--LOCATION--[^;]+;+\s+--LOCAL--\b(\d{1,3}\.){3}\d{1,3}\:\d{1,8}\b;--EXT--\b(\d{1,3}\.){3}\d{1,3}\:\d{1,8}\b;"
+        vsizer = wx.BoxSizer(wx.VERTICAL)
+        hsizer1 = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.tc = wx.TextCtrl(self,-1,"Please insert the cert here\ncomplete (location,ip etc)",style=wx.TE_MULTILINE)
+
+        self.tc.Bind(wx.EVT_TEXT_PASTE, self.onPaste)
+
+        hsizer2 = wx.BoxSizer(wx.HORIZONTAL)
+        hsizer2.Add(self.tc,1,wx.EXPAND)
+        vsizer.Add(hsizer2,1,wx.EXPAND)
+
+        button1 = wx.Button(self,-1,"Send")
+        self.Bind( wx.EVT_BUTTON,self.button1,button1)
+        hsizer1.Add(button1,1,wx.EXPAND)
+
+        button2 = wx.Button(self,-1,"Close")
+        self.Bind( wx.EVT_BUTTON,self.button2,button2)
+        hsizer1.Add(button2,1,wx.EXPAND)
+
+        vsizer.Add(hsizer1,.1,wx.EXPAND)
+        self.SetSizer(vsizer)
+
+    def showMessageDlg(self, msg, title, style):
+        dlg = wx.MessageDialog(parent=None, message=msg,caption=title, style=style)
+        dlg.ShowModal()
+        dlg.Destroy()
+ 
+
+    def onPaste(self,event):
+        if self.first:
+            self.tc.Clear()
+            self.first= False
+        print event
+        event.Skip()
+
+    def button1(self,event):
+        cert=self.tc.GetValue()
+        match=re.search(self.crgx,cert)
+        if match:
+            cert=match.group()
+            t_f, temp_path = mkstemp(suffix=".rscert")
+            f=open(temp_path,'w')
+            f.write(cert)
+            print temp_path
+            f.close()
+            FileTransferWindow(self.mw, self.buddy, temp_path)
+            self.Destroy()
+            
+        else:
+           self.showMessageDlg("Does not appear that you have entered a valid certificate!\nPlease try again.",  "Certificate error", wx.OK|wx.ICON_EXCLAMATION)
+           self.tc.Clear()
+
+    def button2(self,event):
+        self.Destroy()
+
 
 
 class DlgEditContact(wx.Dialog):
